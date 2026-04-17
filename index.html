@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Iceberg Wind Animation</title>
+  <style>
+    :root {
+      --sky-top: #081221;
+      --sky-mid: #183553;
+      --sky-low: #2c5b75;
+      --sea-dark: #06131e;
+      --sea-mid: #0b2435;
+      --sea-light: #113852;
+      --ice-light: #f4fdff;
+      --ice-mid: #bce7f2;
+      --ice-dark: #7fb9d1;
+      --wind: rgba(225, 247, 255, 0.55);
+      --mist: rgba(208, 238, 255, 0.14);
+      --shadow: rgba(0, 0, 0, 0.38);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 30%, rgba(120, 190, 255, 0.14), transparent 28%),
+        linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 48%, var(--sky-low) 100%);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .scene {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      isolation: isolate;
+      overflow: hidden;
+    }
+
+    .scene::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 20% 18%, rgba(255, 255, 255, 0.08), transparent 15%),
+        radial-gradient(circle at 72% 22%, rgba(255, 255, 255, 0.06), transparent 12%),
+        radial-gradient(circle at 50% 55%, rgba(255, 255, 255, 0.03), transparent 42%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .sky-glow {
+      position: absolute;
+      inset: -10% -10% auto -10%;
+      height: 54%;
+      background:
+        radial-gradient(circle at 50% 25%, rgba(128, 219, 255, 0.18), transparent 32%),
+        radial-gradient(circle at 42% 32%, rgba(72, 201, 176, 0.08), transparent 26%),
+        radial-gradient(circle at 58% 38%, rgba(255, 255, 255, 0.05), transparent 20%);
+      filter: blur(18px);
+      animation: skyPulse 10s ease-in-out infinite alternate;
+      z-index: 0;
+    }
+
+    .moon {
+      position: absolute;
+      top: 10%;
+      left: 16%;
+      width: clamp(70px, 10vw, 120px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #ffffff 0%, #dff6ff 34%, #a9d6ea 100%);
+      box-shadow: 0 0 40px rgba(215, 248, 255, 0.34), 0 0 90px rgba(166, 223, 255, 0.12);
+      opacity: 0.9;
+      z-index: 0;
+      animation: moonDrift 14s ease-in-out infinite alternate;
+    }
+
+    .cloud {
+      position: absolute;
+      top: 14%;
+      width: clamp(180px, 24vw, 340px);
+      height: clamp(48px, 7vw, 86px);
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.03));
+      filter: blur(1px);
+      opacity: 0.55;
+      z-index: 0;
+      animation: cloudFloat linear infinite;
+    }
+
+    .cloud::before,
+    .cloud::after {
+      content: "";
+      position: absolute;
+      background: inherit;
+      border-radius: 50%;
+    }
+
+    .cloud::before {
+      width: 42%;
+      height: 130%;
+      left: 12%;
+      top: -42%;
+    }
+
+    .cloud::after {
+      width: 32%;
+      height: 110%;
+      right: 16%;
+      top: -28%;
+    }
+
+    .cloud.one {
+      left: -18%;
+      animation-duration: 46s;
+      top: 13%;
+    }
+
+    .cloud.two {
+      left: -26%;
+      top: 22%;
+      opacity: 0.34;
+      animation-duration: 58s;
+      transform: scale(0.85);
+      animation-delay: -18s;
+    }
+
+    .cloud.three {
+      left: -12%;
+      top: 30%;
+      opacity: 0.28;
+      animation-duration: 66s;
+      transform: scale(0.72);
+      animation-delay: -34s;
+    }
+
+    .wind-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .wind {
+      position: absolute;
+      left: -30vw;
+      width: 34vw;
+      height: 2px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, transparent, var(--wind), transparent);
+      filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.18));
+      animation: windFlow linear infinite;
+      opacity: 0.7;
+    }
+
+    .wind:nth-child(1) { top: 18%; animation-duration: 5.8s; animation-delay: -1.2s; }
+    .wind:nth-child(2) { top: 26%; animation-duration: 6.7s; animation-delay: -3.8s; opacity: 0.55; }
+    .wind:nth-child(3) { top: 33%; animation-duration: 5.2s; animation-delay: -2.5s; width: 26vw; }
+    .wind:nth-child(4) { top: 40%; animation-duration: 7.4s; animation-delay: -5.1s; opacity: 0.48; }
+    .wind:nth-child(5) { top: 48%; animation-duration: 6.1s; animation-delay: -4.2s; }
+    .wind:nth-child(6) { top: 60%; animation-duration: 8s; animation-delay: -6.3s; width: 40vw; opacity: 0.42; }
+
+    .snow {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .snow span {
+      position: absolute;
+      top: -10px;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: rgba(240, 250, 255, 0.9);
+      box-shadow: 0 0 10px rgba(220, 245, 255, 0.3);
+      animation: snowFall linear infinite;
+    }
+
+    .sea {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 42%;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(255,255,255,0.22), transparent 16%),
+        radial-gradient(circle at 28% 28%, rgba(185, 240, 255, 0.22), transparent 18%),
+        radial-gradient(circle at 74% 36%, rgba(170, 225, 248, 0.16), transparent 20%),
+        linear-gradient(180deg, rgba(109, 202, 234, 0.78) 0%, rgba(68, 167, 206, 0.88) 28%, rgba(28, 108, 148, 0.96) 58%, rgba(12, 54, 88, 1) 100%);
+      z-index: 3;
+      overflow: hidden;
+    }
+
+    .sea::before,
+    .sea::after {
+      content: "";
+      position: absolute;
+      left: -20%;
+      right: -20%;
+      height: 36px;
+      top: -16px;
+      background: radial-gradient(closest-side, rgba(233, 250, 255, 0.38), transparent 72%) 0 0 / 120px 36px repeat-x;
+      opacity: 0.72;
+      animation: waveShift 8s linear infinite;
+      filter: blur(0.5px);
+    }
+
+    .sea::after {
+      top: 10px;
+      opacity: 0.48;
+      animation-duration: 12s;
+      animation-direction: reverse;
+    }
+
+    .water-glints {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(198, 248, 255, 0.22), transparent 10%),
+        radial-gradient(circle at 72% 28%, rgba(184, 236, 255, 0.14), transparent 12%),
+        radial-gradient(circle at 50% 34%, rgba(255, 255, 255, 0.1), transparent 8%);
+      opacity: 0.9;
+      mix-blend-mode: screen;
+      animation: glintPulse 7s ease-in-out infinite alternate;
+    }
+
+    .iceberg-wrap {
+      position: absolute;
+      left: 50%;
+      bottom: 12%;
+      width: min(52vw, 640px);
+      aspect-ratio: 1 / 1.25;
+      transform: translateX(-50%);
+      z-index: 4;
+      animation: bob 7.5s ease-in-out infinite alternate;
+      filter: drop-shadow(0 28px 20px var(--shadow));
+    }
+
+    .iceberg {
+      position: absolute;
+      left: 50%;
+      top: 5%;
+      width: 72%;
+      height: 62%;
+      transform: translateX(-50%);
+      clip-path: polygon(48% 0%, 70% 11%, 92% 27%, 100% 53%, 84% 78%, 62% 100%, 35% 95%, 14% 75%, 0% 52%, 12% 27%, 31% 12%);
+      background:
+        linear-gradient(145deg, rgba(255,255,255,0.98) 0%, rgba(203, 240, 249, 0.98) 18%, rgba(174, 228, 242, 0.92) 38%, rgba(106, 171, 198, 0.88) 78%, rgba(61, 114, 148, 0.98) 100%);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .iceberg::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(115deg, transparent 0%, rgba(255,255,255,0.62) 18%, transparent 38%),
+        linear-gradient(90deg, rgba(255,255,255,0.16), transparent 24%, rgba(255,255,255,0.05) 56%, transparent 78%);
+      mix-blend-mode: screen;
+      animation: shine 5.5s ease-in-out infinite alternate;
+    }
+
+    .iceberg::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 18% 24%, rgba(255,255,255,0.88), transparent 10%),
+        radial-gradient(circle at 54% 30%, rgba(255,255,255,0.42), transparent 18%),
+        radial-gradient(circle at 70% 68%, rgba(20, 69, 96, 0.22), transparent 24%);
+      opacity: 0.85;
+    }
+
+    .ice-shadow {
+      position: absolute;
+      left: 50%;
+      bottom: 17%;
+      width: 66%;
+      height: 14%;
+      transform: translateX(-50%);
+      background: radial-gradient(circle, rgba(0, 0, 0, 0.42) 0%, rgba(0, 0, 0, 0.06) 56%, transparent 75%);
+      filter: blur(10px);
+      z-index: 3;
+      animation: shadowShift 7.5s ease-in-out infinite alternate;
+    }
+
+    .underwater {
+      position: absolute;
+      left: 50%;
+      bottom: -2%;
+      width: 44%;
+      height: 50%;
+      transform: translateX(-50%);
+      clip-path: polygon(50% 0%, 72% 8%, 92% 22%, 98% 43%, 82% 74%, 57% 100%, 30% 96%, 13% 74%, 0% 45%, 6% 22%, 26% 8%);
+      background:
+        linear-gradient(180deg, rgba(181, 231, 242, 0.92) 0%, rgba(112, 176, 204, 0.88) 38%, rgba(42, 92, 121, 0.94) 100%);
+      filter: blur(0.25px);
+      opacity: 0.96;
+      z-index: 2;
+      animation: underwaterSway 8s ease-in-out infinite alternate;
+    }
+
+    .underwater::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(160deg, rgba(255,255,255,0.34) 0%, transparent 16%),
+        linear-gradient(90deg, rgba(255,255,255,0.1), transparent 30%, rgba(255,255,255,0.06) 55%, transparent 80%);
+      opacity: 0.9;
+    }
+
+    .wake {
+      position: absolute;
+      left: 50%;
+      bottom: 12%;
+      width: min(62vw, 740px);
+      height: 12%;
+      transform: translateX(-50%);
+      z-index: 3;
+      background:
+        radial-gradient(ellipse at 50% 50%, rgba(210, 248, 255, 0.26) 0%, transparent 34%),
+        radial-gradient(ellipse at 34% 52%, rgba(210, 248, 255, 0.18) 0%, transparent 24%),
+        radial-gradient(ellipse at 66% 50%, rgba(210, 248, 255, 0.18) 0%, transparent 24%);
+      filter: blur(18px);
+      animation: wakeGlow 5s ease-in-out infinite alternate;
+    }
+
+    .caption {
+      position: absolute;
+      left: 50%;
+      top: 8%;
+      transform: translateX(-50%);
+      z-index: 5;
+      text-align: center;
+      color: rgba(236, 249, 255, 0.94);
+      letter-spacing: 0.34em;
+      text-transform: uppercase;
+      font-size: clamp(0.7rem, 1.2vw, 0.95rem);
+      text-shadow: 0 2px 18px rgba(0, 0, 0, 0.3);
+      user-select: none;
+    }
+
+    .caption strong {
+      display: block;
+      margin-top: 0.55rem;
+      letter-spacing: 0.12em;
+      font-size: clamp(1.45rem, 3vw, 2.9rem);
+      text-transform: none;
+    }
+
+    .controls {
+      position: absolute;
+      right: 1.25rem;
+      bottom: 1.25rem;
+      z-index: 6;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 0.9rem;
+      border: 1px solid rgba(235, 250, 255, 0.18);
+      border-radius: 999px;
+      background: rgba(6, 22, 35, 0.38);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+    }
+
+    .controls label {
+      color: rgba(236, 249, 255, 0.88);
+      font-size: 0.9rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .controls button {
+      appearance: none;
+      border: 0;
+      border-radius: 999px;
+      padding: 0.72rem 1.15rem;
+      background: linear-gradient(180deg, rgba(227, 249, 255, 0.98), rgba(160, 228, 245, 0.88));
+      color: #083044;
+      font: inherit;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+      box-shadow: 0 8px 18px rgba(5, 26, 39, 0.22);
+    }
+
+    .controls button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(5, 26, 39, 0.28);
+    }
+
+    .controls button:active {
+      transform: translateY(1px) scale(0.99);
+    }
+
+    .controls button:disabled {
+      cursor: default;
+      opacity: 0.62;
+      box-shadow: none;
+    }
+
+    @keyframes skyPulse {
+      0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.78; }
+      100% { transform: translate3d(0, 1.5%, 0) scale(1.04); opacity: 1; }
+    }
+
+    @keyframes moonDrift {
+      0% { transform: translateY(0) translateX(0) scale(1); }
+      100% { transform: translateY(8px) translateX(6px) scale(1.03); }
+    }
+
+    @keyframes cloudFloat {
+      0% { transform: translateX(0) translateY(0); }
+      100% { transform: translateX(160vw) translateY(5px); }
+    }
+
+    @keyframes windFlow {
+      0% { transform: translateX(0) scaleX(0.35); opacity: 0; }
+      10% { opacity: 0.8; }
+      100% { transform: translateX(180vw) scaleX(1); opacity: 0; }
+    }
+
+    @keyframes snowFall {
+      0% { transform: translate3d(var(--drift, 0px), 0, 0) scale(1); opacity: 0; }
+      10% { opacity: 1; }
+      100% { transform: translate3d(calc(var(--drift, 0px) * 1.5), 110vh, 0) scale(0.8); opacity: 0; }
+    }
+
+    @keyframes waveShift {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(120px); }
+    }
+
+    @keyframes glintPulse {
+      0% { transform: translateY(0); opacity: 0.55; }
+      100% { transform: translateY(-10px); opacity: 1; }
+    }
+
+    @keyframes bob {
+      0% { transform: translateX(-50%) translateY(0) rotate(-0.5deg); }
+      100% { transform: translateX(-50%) translateY(-10px) rotate(0.7deg); }
+    }
+
+    @keyframes shadowShift {
+      0% { transform: translateX(-50%) scale(0.95); opacity: 0.6; }
+      100% { transform: translateX(-50%) scale(1.08); opacity: 0.82; }
+    }
+
+    @keyframes underwaterSway {
+      0% { transform: translateX(-50%) translateY(0) rotate(0deg); }
+      100% { transform: translateX(calc(-50% + 8px)) translateY(8px) rotate(1deg); }
+    }
+
+    @keyframes shine {
+      0% { transform: translateX(-8%) skewX(-6deg); opacity: 0.55; }
+      100% { transform: translateX(12%) skewX(-6deg); opacity: 1; }
+    }
+
+    @keyframes wakeGlow {
+      0% { transform: translateX(-50%) scale(0.92); opacity: 0.45; }
+      100% { transform: translateX(-50%) scale(1.08); opacity: 0.9; }
+    }
+
+    .scene.melting .iceberg-wrap {
+      animation: meltUp 2.7s ease-in forwards;
+    }
+
+    .scene.melting .iceberg,
+    .scene.melting .underwater {
+      animation: meltBody 2.7s ease-in forwards;
+    }
+
+    .scene.melting .ice-shadow,
+    .scene.melting .wake {
+      animation: meltFade 2.2s ease-in forwards;
+    }
+
+    .scene.melting .snow span,
+    .scene.melting .wind,
+    .scene.melting .sea::before,
+    .scene.melting .sea::after {
+      animation-play-state: paused;
+    }
+
+    .scene.melting .water-glints {
+      animation: glintPulse 0.9s ease-in-out infinite alternate;
+    }
+
+    @keyframes meltUp {
+      0% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
+      55% { transform: translateX(-50%) translateY(2px) scale(0.96); opacity: 0.95; }
+      100% { transform: translateX(-50%) translateY(18px) scale(0.35); opacity: 0; }
+    }
+
+    @keyframes meltBody {
+      0% { transform: translateX(-50%) scale(1); filter: blur(0.25px) saturate(1); opacity: 1; }
+      45% { transform: translateX(-50%) scale(0.92) skewX(-2deg); opacity: 0.85; }
+      100% { transform: translateX(-50%) scale(0.08) skewX(-6deg); filter: blur(10px) saturate(1.3); opacity: 0; }
+    }
+
+    @keyframes meltFade {
+      0% { opacity: 1; transform: translateX(-50%) scale(1); }
+      100% { opacity: 0; transform: translateX(-50%) scale(0.2); }
+    }
+
+    .scene.melting .controls button {
+      pointer-events: none;
+    }
+
+    @media (max-width: 700px) {
+      .caption {
+        top: 6%;
+        letter-spacing: 0.22em;
+        padding: 0 1rem;
+      }
+
+      .caption strong {
+        font-size: clamp(1.2rem, 8vw, 2rem);
+      }
+
+      .iceberg-wrap {
+        width: min(74vw, 420px);
+        bottom: 18%;
+      }
+
+      .moon {
+        left: 10%;
+        top: 12%;
+      }
+
+      .controls {
+        left: 1rem;
+        right: 1rem;
+        justify-content: space-between;
+      }
+
+      .controls label {
+        font-size: 0.78rem;
+      }
+
+      .controls button {
+        padding: 0.68rem 0.95rem;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="scene" aria-label="Animated iceberg scene with wind and ocean motion">
+    <div class="sky-glow"></div>
+    <div class="moon" aria-hidden="true"></div>
+    <div class="cloud one" aria-hidden="true"></div>
+    <div class="cloud two" aria-hidden="true"></div>
+    <div class="cloud three" aria-hidden="true"></div>
+
+    <div class="caption">
+      iceberg drift
+      <strong>Wind and Water</strong>
+    </div>
+
+    <div class="wind-layer" aria-hidden="true">
+      <div class="wind"></div>
+      <div class="wind"></div>
+      <div class="wind"></div>
+      <div class="wind"></div>
+      <div class="wind"></div>
+      <div class="wind"></div>
+    </div>
+
+    <div class="snow" aria-hidden="true" id="snow"></div>
+
+    <div class="sea" aria-hidden="true">
+      <div class="water-glints"></div>
+    </div>
+
+    <div class="wake" aria-hidden="true"></div>
+    <div class="ice-shadow" aria-hidden="true"></div>
+
+    <div class="iceberg-wrap">
+      <div class="underwater" aria-hidden="true"></div>
+      <div class="iceberg" aria-hidden="true"></div>
+    </div>
+
+    <form class="controls" id="melt-form">
+      <label for="melt-button">Iceberg melt</label>
+      <button id="melt-button" type="submit">Melt</button>
+    </form>
+  </main>
+
+  <script>
+    const scene = document.querySelector('.scene');
+    const meltForm = document.getElementById('melt-form');
+    const meltButton = document.getElementById('melt-button');
+    const snowLayer = document.getElementById('snow');
+    const snowCount = 42;
+
+    for (let index = 0; index < snowCount; index += 1) {
+      const flake = document.createElement('span');
+      const size = 1 + Math.random() * 3;
+      const startLeft = Math.random() * 100;
+      const duration = 6 + Math.random() * 10;
+      const delay = -Math.random() * duration;
+      const opacity = 0.25 + Math.random() * 0.75;
+      const drift = (Math.random() * 2 - 1) * 18;
+
+      flake.style.left = `${startLeft}%`;
+      flake.style.width = `${size}px`;
+      flake.style.height = `${size}px`;
+      flake.style.opacity = opacity.toFixed(2);
+      flake.style.animationDuration = `${duration.toFixed(2)}s`;
+      flake.style.animationDelay = `${delay.toFixed(2)}s`;
+      flake.style.setProperty('--drift', `${drift}px`);
+
+      flake.style.animationName = 'snowFall';
+      snowLayer.appendChild(flake);
+    }
+
+    meltForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+
+      if (scene.classList.contains('melting')) {
+        return;
+      }
+
+      scene.classList.add('melting');
+      meltButton.disabled = true;
+      meltButton.textContent = 'Melting';
+    });
+  </script>
+</body>
+</html>
