@@ -1,654 +1,1243 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Iceberg Wind Animation</title>
-  <style>
-    :root {
-      --sky-top: #081221;
-      --sky-mid: #183553;
-      --sky-low: #2c5b75;
-      --sea-dark: #06131e;
-      --sea-mid: #0b2435;
-      --sea-light: #113852;
-      --ice-light: #f4fdff;
-      --ice-mid: #bce7f2;
-      --ice-dark: #7fb9d1;
-      --wind: rgba(225, 247, 255, 0.55);
-      --mist: rgba(208, 238, 255, 0.14);
-      --shadow: rgba(0, 0, 0, 0.38);
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    html, body {
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      overflow: hidden;
-      background:
-        radial-gradient(circle at 50% 30%, rgba(120, 190, 255, 0.14), transparent 28%),
-        linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 48%, var(--sky-low) 100%);
-      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-
-    .scene {
-      position: relative;
-      width: 100vw;
-      height: 100vh;
-      isolation: isolate;
-      overflow: hidden;
-    }
-
-    .scene::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background:
-        radial-gradient(circle at 20% 18%, rgba(255, 255, 255, 0.08), transparent 15%),
-        radial-gradient(circle at 72% 22%, rgba(255, 255, 255, 0.06), transparent 12%),
-        radial-gradient(circle at 50% 55%, rgba(255, 255, 255, 0.03), transparent 42%);
-      pointer-events: none;
-      z-index: 1;
-    }
-
-    .sky-glow {
-      position: absolute;
-      inset: -10% -10% auto -10%;
-      height: 54%;
-      background:
-        radial-gradient(circle at 50% 25%, rgba(128, 219, 255, 0.18), transparent 32%),
-        radial-gradient(circle at 42% 32%, rgba(72, 201, 176, 0.08), transparent 26%),
-        radial-gradient(circle at 58% 38%, rgba(255, 255, 255, 0.05), transparent 20%);
-      filter: blur(18px);
-      animation: skyPulse 10s ease-in-out infinite alternate;
-      z-index: 0;
-    }
-
-    .moon {
-      position: absolute;
-      top: 10%;
-      left: 16%;
-      width: clamp(70px, 10vw, 120px);
-      aspect-ratio: 1;
-      border-radius: 50%;
-      background: radial-gradient(circle at 35% 35%, #ffffff 0%, #dff6ff 34%, #a9d6ea 100%);
-      box-shadow: 0 0 40px rgba(215, 248, 255, 0.34), 0 0 90px rgba(166, 223, 255, 0.12);
-      opacity: 0.9;
-      z-index: 0;
-      animation: moonDrift 14s ease-in-out infinite alternate;
-    }
-
-    .cloud {
-      position: absolute;
-      top: 14%;
-      width: clamp(180px, 24vw, 340px);
-      height: clamp(48px, 7vw, 86px);
-      border-radius: 999px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.03));
-      filter: blur(1px);
-      opacity: 0.55;
-      z-index: 0;
-      animation: cloudFloat linear infinite;
-    }
-
-    .cloud::before,
-    .cloud::after {
-      content: "";
-      position: absolute;
-      background: inherit;
-      border-radius: 50%;
-    }
-
-    .cloud::before {
-      width: 42%;
-      height: 130%;
-      left: 12%;
-      top: -42%;
-    }
-
-    .cloud::after {
-      width: 32%;
-      height: 110%;
-      right: 16%;
-      top: -28%;
-    }
-
-    .cloud.one {
-      left: -18%;
-      animation-duration: 46s;
-      top: 13%;
-    }
-
-    .cloud.two {
-      left: -26%;
-      top: 22%;
-      opacity: 0.34;
-      animation-duration: 58s;
-      transform: scale(0.85);
-      animation-delay: -18s;
-    }
-
-    .cloud.three {
-      left: -12%;
-      top: 30%;
-      opacity: 0.28;
-      animation-duration: 66s;
-      transform: scale(0.72);
-      animation-delay: -34s;
-    }
-
-    .wind-layer {
-      position: absolute;
-      inset: 0;
-      z-index: 2;
-      pointer-events: none;
-    }
-
-    .wind {
-      position: absolute;
-      left: -30vw;
-      width: 34vw;
-      height: 2px;
-      border-radius: 999px;
-      background: linear-gradient(90deg, transparent, var(--wind), transparent);
-      filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.18));
-      animation: windFlow linear infinite;
-      opacity: 0.7;
-    }
-
-    .wind:nth-child(1) { top: 18%; animation-duration: 5.8s; animation-delay: -1.2s; }
-    .wind:nth-child(2) { top: 26%; animation-duration: 6.7s; animation-delay: -3.8s; opacity: 0.55; }
-    .wind:nth-child(3) { top: 33%; animation-duration: 5.2s; animation-delay: -2.5s; width: 26vw; }
-    .wind:nth-child(4) { top: 40%; animation-duration: 7.4s; animation-delay: -5.1s; opacity: 0.48; }
-    .wind:nth-child(5) { top: 48%; animation-duration: 6.1s; animation-delay: -4.2s; }
-    .wind:nth-child(6) { top: 60%; animation-duration: 8s; animation-delay: -6.3s; width: 40vw; opacity: 0.42; }
-
-    .snow {
-      position: absolute;
-      inset: 0;
-      z-index: 2;
-      pointer-events: none;
-      overflow: hidden;
-    }
-
-    .snow span {
-      position: absolute;
-      top: -10px;
-      width: 3px;
-      height: 3px;
-      border-radius: 50%;
-      background: rgba(240, 250, 255, 0.9);
-      box-shadow: 0 0 10px rgba(220, 245, 255, 0.3);
-      animation: snowFall linear infinite;
-    }
-
-    .sea {
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      height: 42%;
-      background:
-        radial-gradient(circle at 50% 0%, rgba(255,255,255,0.22), transparent 16%),
-        radial-gradient(circle at 28% 28%, rgba(185, 240, 255, 0.22), transparent 18%),
-        radial-gradient(circle at 74% 36%, rgba(170, 225, 248, 0.16), transparent 20%),
-        linear-gradient(180deg, rgba(109, 202, 234, 0.78) 0%, rgba(68, 167, 206, 0.88) 28%, rgba(28, 108, 148, 0.96) 58%, rgba(12, 54, 88, 1) 100%);
-      z-index: 3;
-      overflow: hidden;
-    }
-
-    .sea::before,
-    .sea::after {
-      content: "";
-      position: absolute;
-      left: -20%;
-      right: -20%;
-      height: 36px;
-      top: -16px;
-      background: radial-gradient(closest-side, rgba(233, 250, 255, 0.38), transparent 72%) 0 0 / 120px 36px repeat-x;
-      opacity: 0.72;
-      animation: waveShift 8s linear infinite;
-      filter: blur(0.5px);
-    }
-
-    .sea::after {
-      top: 10px;
-      opacity: 0.48;
-      animation-duration: 12s;
-      animation-direction: reverse;
-    }
-
-    .water-glints {
-      position: absolute;
-      inset: 0;
-      background:
-        radial-gradient(circle at 20% 20%, rgba(198, 248, 255, 0.22), transparent 10%),
-        radial-gradient(circle at 72% 28%, rgba(184, 236, 255, 0.14), transparent 12%),
-        radial-gradient(circle at 50% 34%, rgba(255, 255, 255, 0.1), transparent 8%);
-      opacity: 0.9;
-      mix-blend-mode: screen;
-      animation: glintPulse 7s ease-in-out infinite alternate;
-    }
-
-    .iceberg-wrap {
-      position: absolute;
-      left: 50%;
-      bottom: 12%;
-      width: min(52vw, 640px);
-      aspect-ratio: 1 / 1.25;
-      transform: translateX(-50%);
-      z-index: 4;
-      animation: bob 7.5s ease-in-out infinite alternate;
-      filter: drop-shadow(0 28px 20px var(--shadow));
-    }
-
-    .iceberg {
-      position: absolute;
-      left: 50%;
-      top: 5%;
-      width: 72%;
-      height: 62%;
-      transform: translateX(-50%);
-      clip-path: polygon(48% 0%, 70% 11%, 92% 27%, 100% 53%, 84% 78%, 62% 100%, 35% 95%, 14% 75%, 0% 52%, 12% 27%, 31% 12%);
-      background:
-        linear-gradient(145deg, rgba(255,255,255,0.98) 0%, rgba(203, 240, 249, 0.98) 18%, rgba(174, 228, 242, 0.92) 38%, rgba(106, 171, 198, 0.88) 78%, rgba(61, 114, 148, 0.98) 100%);
-      border-radius: 18px;
-      overflow: hidden;
-    }
-
-    .iceberg::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background:
-        linear-gradient(115deg, transparent 0%, rgba(255,255,255,0.62) 18%, transparent 38%),
-        linear-gradient(90deg, rgba(255,255,255,0.16), transparent 24%, rgba(255,255,255,0.05) 56%, transparent 78%);
-      mix-blend-mode: screen;
-      animation: shine 5.5s ease-in-out infinite alternate;
-    }
-
-    .iceberg::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background:
-        radial-gradient(circle at 18% 24%, rgba(255,255,255,0.88), transparent 10%),
-        radial-gradient(circle at 54% 30%, rgba(255,255,255,0.42), transparent 18%),
-        radial-gradient(circle at 70% 68%, rgba(20, 69, 96, 0.22), transparent 24%);
-      opacity: 0.85;
-    }
-
-    .ice-shadow {
-      position: absolute;
-      left: 50%;
-      bottom: 17%;
-      width: 66%;
-      height: 14%;
-      transform: translateX(-50%);
-      background: radial-gradient(circle, rgba(0, 0, 0, 0.42) 0%, rgba(0, 0, 0, 0.06) 56%, transparent 75%);
-      filter: blur(10px);
-      z-index: 3;
-      animation: shadowShift 7.5s ease-in-out infinite alternate;
-    }
-
-    .underwater {
-      position: absolute;
-      left: 50%;
-      bottom: -2%;
-      width: 44%;
-      height: 50%;
-      transform: translateX(-50%);
-      clip-path: polygon(50% 0%, 72% 8%, 92% 22%, 98% 43%, 82% 74%, 57% 100%, 30% 96%, 13% 74%, 0% 45%, 6% 22%, 26% 8%);
-      background:
-        linear-gradient(180deg, rgba(181, 231, 242, 0.92) 0%, rgba(112, 176, 204, 0.88) 38%, rgba(42, 92, 121, 0.94) 100%);
-      filter: blur(0.25px);
-      opacity: 0.96;
-      z-index: 2;
-      animation: underwaterSway 8s ease-in-out infinite alternate;
-    }
-
-    .underwater::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background:
-        linear-gradient(160deg, rgba(255,255,255,0.34) 0%, transparent 16%),
-        linear-gradient(90deg, rgba(255,255,255,0.1), transparent 30%, rgba(255,255,255,0.06) 55%, transparent 80%);
-      opacity: 0.9;
-    }
-
-    .wake {
-      position: absolute;
-      left: 50%;
-      bottom: 12%;
-      width: min(62vw, 740px);
-      height: 12%;
-      transform: translateX(-50%);
-      z-index: 3;
-      background:
-        radial-gradient(ellipse at 50% 50%, rgba(210, 248, 255, 0.26) 0%, transparent 34%),
-        radial-gradient(ellipse at 34% 52%, rgba(210, 248, 255, 0.18) 0%, transparent 24%),
-        radial-gradient(ellipse at 66% 50%, rgba(210, 248, 255, 0.18) 0%, transparent 24%);
-      filter: blur(18px);
-      animation: wakeGlow 5s ease-in-out infinite alternate;
-    }
-
-    .caption {
-      position: absolute;
-      left: 50%;
-      top: 8%;
-      transform: translateX(-50%);
-      z-index: 5;
-      text-align: center;
-      color: rgba(236, 249, 255, 0.94);
-      letter-spacing: 0.34em;
-      text-transform: uppercase;
-      font-size: clamp(0.7rem, 1.2vw, 0.95rem);
-      text-shadow: 0 2px 18px rgba(0, 0, 0, 0.3);
-      user-select: none;
-    }
-
-    .caption strong {
-      display: block;
-      margin-top: 0.55rem;
-      letter-spacing: 0.12em;
-      font-size: clamp(1.45rem, 3vw, 2.9rem);
-      text-transform: none;
-    }
-
-    .controls {
-      position: absolute;
-      right: 1.25rem;
-      bottom: 1.25rem;
-      z-index: 6;
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      padding: 0.75rem 0.9rem;
-      border: 1px solid rgba(235, 250, 255, 0.18);
-      border-radius: 999px;
-      background: rgba(6, 22, 35, 0.38);
-      backdrop-filter: blur(10px);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
-    }
-
-    .controls label {
-      color: rgba(236, 249, 255, 0.88);
-      font-size: 0.9rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
-
-    .controls button {
-      appearance: none;
-      border: 0;
-      border-radius: 999px;
-      padding: 0.72rem 1.15rem;
-      background: linear-gradient(180deg, rgba(227, 249, 255, 0.98), rgba(160, 228, 245, 0.88));
-      color: #083044;
-      font: inherit;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      cursor: pointer;
-      transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
-      box-shadow: 0 8px 18px rgba(5, 26, 39, 0.22);
-    }
-
-    .controls button:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 12px 24px rgba(5, 26, 39, 0.28);
-    }
-
-    .controls button:active {
-      transform: translateY(1px) scale(0.99);
-    }
-
-    .controls button:disabled {
-      cursor: default;
-      opacity: 0.62;
-      box-shadow: none;
-    }
-
-    @keyframes skyPulse {
-      0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.78; }
-      100% { transform: translate3d(0, 1.5%, 0) scale(1.04); opacity: 1; }
-    }
-
-    @keyframes moonDrift {
-      0% { transform: translateY(0) translateX(0) scale(1); }
-      100% { transform: translateY(8px) translateX(6px) scale(1.03); }
-    }
-
-    @keyframes cloudFloat {
-      0% { transform: translateX(0) translateY(0); }
-      100% { transform: translateX(160vw) translateY(5px); }
-    }
-
-    @keyframes windFlow {
-      0% { transform: translateX(0) scaleX(0.35); opacity: 0; }
-      10% { opacity: 0.8; }
-      100% { transform: translateX(180vw) scaleX(1); opacity: 0; }
-    }
-
-    @keyframes snowFall {
-      0% { transform: translate3d(var(--drift, 0px), 0, 0) scale(1); opacity: 0; }
-      10% { opacity: 1; }
-      100% { transform: translate3d(calc(var(--drift, 0px) * 1.5), 110vh, 0) scale(0.8); opacity: 0; }
-    }
-
-    @keyframes waveShift {
-      0% { transform: translateX(0); }
-      100% { transform: translateX(120px); }
-    }
-
-    @keyframes glintPulse {
-      0% { transform: translateY(0); opacity: 0.55; }
-      100% { transform: translateY(-10px); opacity: 1; }
-    }
-
-    @keyframes bob {
-      0% { transform: translateX(-50%) translateY(0) rotate(-0.5deg); }
-      100% { transform: translateX(-50%) translateY(-10px) rotate(0.7deg); }
-    }
-
-    @keyframes shadowShift {
-      0% { transform: translateX(-50%) scale(0.95); opacity: 0.6; }
-      100% { transform: translateX(-50%) scale(1.08); opacity: 0.82; }
-    }
-
-    @keyframes underwaterSway {
-      0% { transform: translateX(-50%) translateY(0) rotate(0deg); }
-      100% { transform: translateX(calc(-50% + 8px)) translateY(8px) rotate(1deg); }
-    }
-
-    @keyframes shine {
-      0% { transform: translateX(-8%) skewX(-6deg); opacity: 0.55; }
-      100% { transform: translateX(12%) skewX(-6deg); opacity: 1; }
-    }
-
-    @keyframes wakeGlow {
-      0% { transform: translateX(-50%) scale(0.92); opacity: 0.45; }
-      100% { transform: translateX(-50%) scale(1.08); opacity: 0.9; }
-    }
-
-    .scene.melting .iceberg-wrap {
-      animation: meltUp 2.7s ease-in forwards;
-    }
-
-    .scene.melting .iceberg,
-    .scene.melting .underwater {
-      animation: meltBody 2.7s ease-in forwards;
-    }
-
-    .scene.melting .ice-shadow,
-    .scene.melting .wake {
-      animation: meltFade 2.2s ease-in forwards;
-    }
-
-    .scene.melting .snow span,
-    .scene.melting .wind,
-    .scene.melting .sea::before,
-    .scene.melting .sea::after {
-      animation-play-state: paused;
-    }
-
-    .scene.melting .water-glints {
-      animation: glintPulse 0.9s ease-in-out infinite alternate;
-    }
-
-    @keyframes meltUp {
-      0% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
-      55% { transform: translateX(-50%) translateY(2px) scale(0.96); opacity: 0.95; }
-      100% { transform: translateX(-50%) translateY(18px) scale(0.35); opacity: 0; }
-    }
-
-    @keyframes meltBody {
-      0% { transform: translateX(-50%) scale(1); filter: blur(0.25px) saturate(1); opacity: 1; }
-      45% { transform: translateX(-50%) scale(0.92) skewX(-2deg); opacity: 0.85; }
-      100% { transform: translateX(-50%) scale(0.08) skewX(-6deg); filter: blur(10px) saturate(1.3); opacity: 0; }
-    }
-
-    @keyframes meltFade {
-      0% { opacity: 1; transform: translateX(-50%) scale(1); }
-      100% { opacity: 0; transform: translateX(-50%) scale(0.2); }
-    }
-
-    .scene.melting .controls button {
-      pointer-events: none;
-    }
-
-    @media (max-width: 700px) {
-      .caption {
-        top: 6%;
-        letter-spacing: 0.22em;
-        padding: 0 1rem;
-      }
-
-      .caption strong {
-        font-size: clamp(1.2rem, 8vw, 2rem);
-      }
-
-      .iceberg-wrap {
-        width: min(74vw, 420px);
-        bottom: 18%;
-      }
-
-      .moon {
-        left: 10%;
-        top: 12%;
-      }
-
-      .controls {
-        left: 1rem;
-        right: 1rem;
-        justify-content: space-between;
-      }
-
-      .controls label {
-        font-size: 0.78rem;
-      }
-
-      .controls button {
-        padding: 0.68rem 0.95rem;
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-      }
-    }
-  </style>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Mountain Climate Quiz Scene</title>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+	<style>
+		:root {
+			--sky-top: #6fb4e8;
+			--sky-mid: #bde4ff;
+			--sky-bottom: #eef8ff;
+			--snow-color: #f8fcff;
+			--peak-shadow: #a9c9dc;
+			--cliff-1: #6e7e85;
+			--cliff-2: #4f5c61;
+			--slope-1: #5f934e;
+			--slope-2: #466f3a;
+			--river: #70c9f5;
+			--village-wall: #d7bf9f;
+			--village-roof: #914a34;
+			--haze: rgba(255, 255, 255, 0.06);
+			--glacier-scale: 1;
+			--river-width: 100%;
+			--grass-opacity: 1;
+			--snow-opacity: 1;
+			--rockfall-opacity: 0;
+			--cloud-speed: 36s;
+			--wind-strength: 1;
+			--scene-hue: 0deg;
+			--scene-sat: 1;
+			--scene-bright: 1;
+			--mist-opacity: 0.25;
+			--sun-intensity: 0.55;
+			--dust-opacity: 0;
+			--aurora-opacity: 0.2;
+			--panel-glow: rgba(86, 175, 226, 0.22);
+		}
+
+		* {
+			box-sizing: border-box;
+		}
+
+		body {
+			margin: 0;
+			min-height: 100vh;
+			font-family: "Verdana", "Trebuchet MS", sans-serif;
+			color: #112937;
+			background: linear-gradient(180deg, var(--sky-top), var(--sky-mid) 45%, var(--sky-bottom));
+			transition: background 1200ms cubic-bezier(0.22, 1, 0.36, 1);
+			overflow-x: hidden;
+		}
+
+		body.state-healthy {
+			--sky-top: #63afe4;
+			--sky-mid: #c8ebff;
+			--sky-bottom: #f0fbff;
+			--snow-color: #fcffff;
+			--peak-shadow: #a8cede;
+			--cliff-1: #728188;
+			--cliff-2: #55646a;
+			--slope-1: #65a955;
+			--slope-2: #3f7633;
+			--river: #69c6f2;
+			--haze: rgba(255, 255, 255, 0.04);
+			--glacier-scale: 1;
+			--river-width: 100%;
+			--grass-opacity: 1;
+			--snow-opacity: 1;
+			--rockfall-opacity: 0;
+			--cloud-speed: 34s;
+			--wind-strength: 0.9;
+			--scene-hue: 0deg;
+			--scene-sat: 1.05;
+			--scene-bright: 1.02;
+			--mist-opacity: 0.16;
+			--sun-intensity: 0.72;
+			--dust-opacity: 0;
+			--aurora-opacity: 0.32;
+			--panel-glow: rgba(62, 173, 232, 0.28);
+		}
+
+		body.state-warning {
+			--sky-top: #7e9eb2;
+			--sky-mid: #b0c7d6;
+			--sky-bottom: #d9e5eb;
+			--snow-color: #e8f2f8;
+			--peak-shadow: #94a8b4;
+			--cliff-1: #78756c;
+			--cliff-2: #605c54;
+			--slope-1: #76906a;
+			--slope-2: #5c6e56;
+			--river: #59b0d7;
+			--haze: rgba(139, 154, 164, 0.2);
+			--glacier-scale: 0.8;
+			--river-width: 70%;
+			--grass-opacity: 0.72;
+			--snow-opacity: 0.72;
+			--rockfall-opacity: 0.75;
+			--cloud-speed: 18s;
+			--wind-strength: 1.25;
+			--scene-hue: -12deg;
+			--scene-sat: 0.85;
+			--scene-bright: 0.92;
+			--mist-opacity: 0.35;
+			--sun-intensity: 0.38;
+			--dust-opacity: 0.25;
+			--aurora-opacity: 0.18;
+			--panel-glow: rgba(123, 145, 160, 0.24);
+		}
+
+		body.state-critical {
+			--sky-top: #b67648;
+			--sky-mid: #d49f6f;
+			--sky-bottom: #d2b18d;
+			--snow-color: #d9e3ea;
+			--peak-shadow: #8f8f89;
+			--cliff-1: #8c6549;
+			--cliff-2: #614230;
+			--slope-1: #866344;
+			--slope-2: #6a442d;
+			--river: #83b3be;
+			--haze: rgba(147, 85, 50, 0.34);
+			--glacier-scale: 0.58;
+			--river-width: 34%;
+			--grass-opacity: 0.35;
+			--snow-opacity: 0.35;
+			--rockfall-opacity: 1;
+			--cloud-speed: 10s;
+			--wind-strength: 1.7;
+			--scene-hue: -28deg;
+			--scene-sat: 0.76;
+			--scene-bright: 0.86;
+			--mist-opacity: 0.56;
+			--sun-intensity: 0.2;
+			--dust-opacity: 0.64;
+			--aurora-opacity: 0.08;
+			--panel-glow: rgba(155, 110, 70, 0.3);
+		}
+
+		body.state-shift .scene {
+			animation: pulseShift 0.9s ease;
+		}
+
+		.scene {
+			position: fixed;
+			inset: 0;
+			overflow: hidden;
+			z-index: 0;
+			filter: hue-rotate(var(--scene-hue)) saturate(var(--scene-sat)) brightness(var(--scene-bright));
+			transition: filter 1200ms cubic-bezier(0.22, 1, 0.36, 1);
+			animation: cameraFloat 14s ease-in-out infinite;
+		}
+
+		.sun-glow {
+			position: absolute;
+			left: 12%;
+			top: 6%;
+			width: 240px;
+			height: 240px;
+			border-radius: 50%;
+			background: radial-gradient(circle, rgba(255, 250, 205, 0.68) 0%, rgba(255, 229, 170, 0.34) 45%, transparent 72%);
+			opacity: var(--sun-intensity);
+			transition: opacity 900ms ease;
+			animation: sunPulse 5s ease-in-out infinite;
+			z-index: 1;
+		}
+
+		.aurora {
+			position: absolute;
+			inset: -12% -8% auto -8%;
+			height: 46%;
+			z-index: 2;
+			opacity: var(--aurora-opacity);
+			transition: opacity 1000ms ease;
+			pointer-events: none;
+		}
+
+		.aurora-ribbon {
+			position: absolute;
+			left: -8%;
+			width: 116%;
+			height: 90px;
+			background: linear-gradient(90deg, rgba(125, 230, 255, 0.08), rgba(130, 255, 201, 0.3), rgba(118, 196, 255, 0.12));
+			filter: blur(9px);
+			mix-blend-mode: screen;
+			border-radius: 999px;
+			animation: auroraWave 10s ease-in-out infinite;
+		}
+
+		.aurora-ribbon.r1 { top: 12%; animation-delay: -1s; }
+		.aurora-ribbon.r2 { top: 34%; animation-duration: 13s; animation-delay: -5s; }
+		.aurora-ribbon.r3 { top: 54%; animation-duration: 16s; animation-delay: -8s; }
+
+		.color-wash {
+			position: absolute;
+			inset: -20% -10%;
+			background: conic-gradient(from 0deg at 50% 50%, rgba(121, 198, 255, 0.15), rgba(255, 201, 154, 0.16), rgba(175, 235, 166, 0.12), rgba(121, 198, 255, 0.15));
+			mix-blend-mode: soft-light;
+			animation: hueDrift 16s linear infinite;
+			z-index: 2;
+		}
+
+		.mist-band {
+			position: absolute;
+			left: -20%;
+			width: 140%;
+			height: 110px;
+			border-radius: 999px;
+			background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0));
+			opacity: var(--mist-opacity);
+			transition: opacity 800ms ease;
+			z-index: 4;
+			animation: mistDrift 18s linear infinite;
+		}
+
+		.mist-band.m1 {
+			top: 34%;
+		}
+
+		.mist-band.m2 {
+			top: 50%;
+			animation-duration: 24s;
+			animation-direction: reverse;
+		}
+
+		.haze {
+			position: absolute;
+			inset: 0;
+			background: linear-gradient(150deg, transparent 20%, var(--haze) 65%);
+			transition: background 850ms ease;
+			z-index: 15;
+			pointer-events: none;
+		}
+
+		.cloud-layer {
+			position: absolute;
+			top: 5%;
+			left: -30%;
+			width: 160%;
+			height: 34%;
+			z-index: 3;
+			animation: cloudDrift var(--cloud-speed) ease-in-out infinite alternate;
+			transition: animation-duration 800ms ease;
+		}
+
+		.cloud {
+			position: absolute;
+			background: rgba(255, 255, 255, 0.62);
+			border-radius: 999px;
+			filter: blur(1px);
+		}
+
+		.cloud::before,
+		.cloud::after {
+			content: "";
+			position: absolute;
+			border-radius: 50%;
+			background: inherit;
+		}
+
+		.cloud.a {
+			width: 220px;
+			height: 70px;
+			left: 10%;
+			top: 8%;
+		}
+
+		.cloud.a::before {
+			width: 80px;
+			height: 80px;
+			left: 22px;
+			top: -30px;
+		}
+
+		.cloud.a::after {
+			width: 70px;
+			height: 70px;
+			right: 35px;
+			top: -24px;
+		}
+
+		.cloud.b {
+			width: 300px;
+			height: 86px;
+			left: 55%;
+			top: 22%;
+			opacity: 0.82;
+		}
+
+		.cloud.b::before {
+			width: 100px;
+			height: 100px;
+			left: 44px;
+			top: -42px;
+		}
+
+		.cloud.b::after {
+			width: 90px;
+			height: 90px;
+			right: 42px;
+			top: -34px;
+		}
+
+		.mountains-back {
+			position: absolute;
+			inset: 18% 0 auto 0;
+			height: 52%;
+			z-index: 5;
+			opacity: 0.96;
+			animation: mountainParallax 20s ease-in-out infinite;
+		}
+
+		.peak {
+			position: absolute;
+			bottom: 0;
+			background: linear-gradient(150deg, #dde9f0 5%, var(--peak-shadow) 80%);
+			clip-path: polygon(0 100%, 50% 0, 100% 100%);
+			transition: background 700ms ease;
+		}
+
+		.peak::after {
+			content: "";
+			position: absolute;
+			left: 34%;
+			top: 0;
+			width: 32%;
+			height: 28%;
+			background: var(--snow-color);
+			opacity: var(--snow-opacity);
+			clip-path: polygon(50% 0, 0 100%, 100% 100%);
+			transition: opacity 900ms ease;
+		}
+
+		.peak.one { left: 2%; width: 34%; height: 90%; }
+		.peak.two { left: 24%; width: 35%; height: 98%; }
+		.peak.three { left: 53%; width: 38%; height: 84%; }
+		.peak.four { left: 78%; width: 22%; height: 60%; }
+
+		.mid-cliffs {
+			position: absolute;
+			inset: 45% 0 auto 0;
+			height: 28%;
+			z-index: 6;
+			animation: cliffParallax 14s ease-in-out infinite;
+		}
+
+		.cliff {
+			position: absolute;
+			bottom: 0;
+			background: linear-gradient(170deg, var(--cliff-1), var(--cliff-2));
+			clip-path: polygon(0 100%, 8% 48%, 22% 62%, 38% 35%, 56% 58%, 73% 28%, 86% 50%, 100% 22%, 100% 100%);
+			transition: background 700ms ease;
+		}
+
+		.cliff.left { left: 0; width: 57%; height: 100%; }
+		.cliff.right { right: 0; width: 52%; height: 92%; transform: scaleX(-1); }
+
+		.lower-slopes {
+			position: absolute;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			height: 40%;
+			z-index: 7;
+			background: linear-gradient(175deg, var(--slope-1), var(--slope-2) 70%);
+			clip-path: polygon(0 30%, 10% 42%, 28% 36%, 45% 52%, 60% 42%, 78% 55%, 100% 38%, 100% 100%, 0 100%);
+			transition: background 900ms ease;
+		}
+
+		.grass-patch {
+			position: absolute;
+			width: 130px;
+			height: 38px;
+			border-radius: 50%;
+			background: rgba(122, 188, 99, 0.7);
+			opacity: var(--grass-opacity);
+			transition: opacity 900ms ease;
+		}
+
+		.grass-patch.g1 { left: 15%; top: 24%; }
+		.grass-patch.g2 { left: 44%; top: 38%; }
+		.grass-patch.g3 { left: 72%; top: 26%; }
+
+		.forest {
+			position: absolute;
+			left: 10%;
+			right: 10%;
+			bottom: 28%;
+			height: 26%;
+			z-index: 8;
+			display: flex;
+			justify-content: space-between;
+			align-items: flex-end;
+		}
+
+		.tree {
+			position: relative;
+			width: 24px;
+			height: 86px;
+			transform-origin: bottom center;
+			animation: sway 3.8s ease-in-out infinite;
+			animation-delay: calc(var(--i) * -0.35s);
+			opacity: calc(0.62 + (var(--grass-opacity) * 0.38));
+			transition: opacity 700ms ease;
+		}
+
+		.tree::before {
+			content: "";
+			position: absolute;
+			left: 10px;
+			bottom: 0;
+			width: 4px;
+			height: 30px;
+			background: #5f4131;
+		}
+
+		.tree::after {
+			content: "";
+			position: absolute;
+			left: -1px;
+			bottom: 20px;
+			width: 26px;
+			height: 50px;
+			background: linear-gradient(180deg, #3d7f43, #2f5c2c);
+			clip-path: polygon(50% 0, 0 100%, 100% 100%);
+		}
+
+		.village {
+			position: absolute;
+			left: 56%;
+			bottom: 25%;
+			width: 210px;
+			height: 108px;
+			z-index: 9;
+		}
+
+		.house {
+			position: absolute;
+			width: 64px;
+			height: 44px;
+			bottom: 0;
+			background: var(--village-wall);
+			border: 2px solid rgba(0, 0, 0, 0.08);
+		}
+
+		.house::before {
+			content: "";
+			position: absolute;
+			left: -6px;
+			top: -24px;
+			width: 74px;
+			height: 26px;
+			background: var(--village-roof);
+			clip-path: polygon(50% 0, 0 100%, 100% 100%);
+		}
+
+		.house::after {
+			content: "";
+			position: absolute;
+			width: 14px;
+			height: 16px;
+			right: 10px;
+			bottom: 8px;
+			background: rgba(140, 191, 215, 0.9);
+			border: 1px solid rgba(0, 0, 0, 0.15);
+		}
+
+		.house.h1 { left: 0; }
+		.house.h2 { left: 74px; bottom: 8px; transform: scale(0.95); }
+		.house.h3 { left: 142px; bottom: 2px; transform: scale(0.88); }
+
+		.glacier {
+			position: absolute;
+			left: 36%;
+			bottom: 26%;
+			width: 280px;
+			height: 100px;
+			z-index: 10;
+			background: linear-gradient(150deg, #e9fbff, #99d7f5);
+			clip-path: polygon(0 70%, 10% 42%, 34% 46%, 55% 16%, 76% 28%, 100% 8%, 100% 100%, 0 100%);
+			transform-origin: bottom left;
+			transform: scaleY(var(--glacier-scale));
+			transition: transform 1300ms cubic-bezier(0.22, 1, 0.36, 1);
+			box-shadow: inset -14px -10px 14px rgba(81, 151, 186, 0.4);
+		}
+
+		.river {
+			position: absolute;
+			left: 28%;
+			bottom: 6%;
+			width: min(540px, 50vw);
+			height: 42px;
+			z-index: 6;
+			overflow: hidden;
+			border-radius: 999px;
+			border: 1px solid rgba(64, 133, 162, 0.45);
+			background: rgba(125, 190, 217, 0.35);
+		}
+
+		.river::before {
+			content: "";
+			position: absolute;
+			left: 0;
+			top: 0;
+			bottom: 0;
+			width: var(--river-width);
+			background: repeating-linear-gradient(-45deg, var(--river), var(--river) 12px, #8ed1ee 12px, #8ed1ee 24px);
+			transition: width 1100ms cubic-bezier(0.22, 1, 0.36, 1), background 700ms ease;
+			animation: waterMove 2.5s linear infinite;
+		}
+
+		.river::after {
+			content: "";
+			position: absolute;
+			inset: 0;
+			background: linear-gradient(100deg, transparent 12%, rgba(255, 255, 255, 0.55) 42%, transparent 58%);
+			mix-blend-mode: screen;
+			animation: riverShimmer 4.6s ease-in-out infinite;
+			opacity: 0.55;
+		}
+
+		.snowfall,
+		.dust-layer,
+		.spark-layer {
+			position: absolute;
+			inset: 0;
+			pointer-events: none;
+			overflow: hidden;
+		}
+
+		.snowfall { z-index: 14; }
+		.dust-layer { z-index: 13; }
+		.spark-layer { z-index: 13; }
+
+		.flake {
+			position: absolute;
+			top: -10px;
+			width: 5px;
+			height: 5px;
+			background: rgba(255, 255, 255, 0.85);
+			border-radius: 50%;
+			animation: snowfall linear infinite;
+			opacity: calc(var(--snow-opacity) * 0.9);
+			transition: opacity 700ms ease;
+		}
+
+		.dust {
+			position: absolute;
+			width: 4px;
+			height: 4px;
+			border-radius: 50%;
+			background: rgba(176, 133, 98, 0.7);
+			opacity: var(--dust-opacity);
+			animation: dustRise linear infinite;
+		}
+
+		.spark {
+			position: absolute;
+			width: 3px;
+			height: 3px;
+			border-radius: 50%;
+			background: rgba(198, 244, 255, 0.8);
+			box-shadow: 0 0 10px rgba(175, 225, 255, 0.7);
+			animation: sparkFloat linear forwards;
+		}
+
+		.rockfall-zone {
+			position: absolute;
+			inset: 40% 0 20% 0;
+			z-index: 11;
+			pointer-events: none;
+		}
+
+		.icefall-zone {
+			position: absolute;
+			left: 33%;
+			bottom: 22%;
+			width: 300px;
+			height: 140px;
+			z-index: 12;
+			pointer-events: none;
+		}
+
+		.rock {
+			position: absolute;
+			width: 10px;
+			height: 10px;
+			background: #6b5140;
+			clip-path: polygon(50% 0, 100% 34%, 80% 100%, 15% 90%, 0 40%);
+			opacity: var(--rockfall-opacity);
+			animation: rockSlide 2.2s linear forwards;
+		}
+
+		.ice-chunk {
+			position: absolute;
+			width: 14px;
+			height: 14px;
+			background: linear-gradient(150deg, #dff7ff, #7ec2e0);
+			clip-path: polygon(40% 0, 100% 28%, 82% 100%, 8% 90%, 0 34%);
+			opacity: 0.9;
+			animation: iceDrop 1.8s ease-in forwards;
+		}
+
+		main {
+			position: relative;
+			z-index: 20;
+			min-height: 100vh;
+		}
+
+		.quiz-panel {
+			position: relative;
+			overflow: hidden;
+			margin-top: 18px;
+			width: min(780px, 100%);
+			background: rgba(240, 249, 255, 0.84);
+			border: 1px solid rgba(69, 122, 149, 0.25);
+			backdrop-filter: blur(6px);
+			border-radius: 20px;
+			box-shadow: 0 12px 24px rgba(16, 43, 60, 0.2);
+			transition: box-shadow 700ms ease, border-color 700ms ease;
+		}
+
+		.quiz-panel::before {
+			content: "";
+			position: absolute;
+			inset: 0;
+			background: linear-gradient(135deg, rgba(255, 255, 255, 0.34), transparent 55%);
+			pointer-events: none;
+		}
+
+		.quiz-panel::after {
+			content: "";
+			position: absolute;
+			inset: -20%;
+			background: radial-gradient(circle, var(--panel-glow), transparent 60%);
+			opacity: 0.9;
+			pointer-events: none;
+			animation: panelGlow 7s ease-in-out infinite;
+		}
+
+		h1 {
+			margin: 0;
+			color: #0d394f;
+			font-size: clamp(1.2rem, 1.2vw + 1rem, 1.8rem);
+		}
+
+		.description {
+			line-height: 1.45;
+			max-width: 68ch;
+		}
+
+		.badge-pill {
+			padding: 0.42rem 0.72rem;
+			border-radius: 999px;
+			background: rgba(208, 233, 248, 0.92);
+			border: 1px solid rgba(118, 171, 197, 0.6);
+			font-weight: 700;
+			font-size: 0.9rem;
+			transition: background-color 700ms ease, border-color 700ms ease, color 700ms ease;
+		}
+
+		body.state-healthy .badge-pill {
+			background: rgba(210, 237, 252, 0.92);
+			border-color: rgba(124, 188, 221, 0.66);
+			color: #0f3f5a;
+		}
+
+		body.state-warning .badge-pill {
+			background: rgba(214, 220, 225, 0.88);
+			border-color: rgba(145, 156, 166, 0.72);
+			color: #334753;
+		}
+
+		body.state-critical .badge-pill {
+			background: rgba(218, 195, 176, 0.86);
+			border-color: rgba(155, 114, 85, 0.7);
+			color: #4d2d1d;
+		}
+
+		.question-box {
+			border-radius: 14px;
+			border: 1px solid rgba(114, 171, 199, 0.5);
+			background: rgba(255, 255, 255, 0.95);
+			min-height: 84px;
+		}
+
+		.question-label {
+			margin: 0;
+			font-size: 0.84rem;
+			letter-spacing: 0.05em;
+			text-transform: uppercase;
+			color: #2d5f7f;
+			font-weight: 700;
+		}
+
+		#questionText {
+			margin: 0;
+			font-size: 1.05rem;
+		}
+
+		#questionText.question-enter {
+			animation: questionFade 420ms ease;
+		}
+
+		.btn-climate {
+			border: 0;
+			border-radius: 12px;
+			font-weight: 700;
+			padding: 0.75rem;
+			transition: transform 140ms ease, filter 220ms ease;
+		}
+
+		.btn-climate:hover:not(:disabled) {
+			transform: translateY(-2px);
+			filter: saturate(1.05);
+		}
+
+		#goodBtn {
+			background: linear-gradient(135deg, #2e8c58, #3ca668);
+			color: #fff;
+		}
+
+		#badBtn {
+			background: linear-gradient(135deg, #a84a3a, #bb5c46);
+			color: #fff;
+		}
+
+		#restartBtn {
+			display: none;
+		}
+
+		.feedback {
+			margin: 0;
+			min-height: 24px;
+			font-weight: 700;
+		}
+
+		.feedback.good { color: #1f7344; }
+		.feedback.bad { color: #8e2f2f; }
+
+		@keyframes cloudDrift {
+			from { transform: translateX(0); }
+			to { transform: translateX(18%); }
+		}
+
+		@keyframes auroraWave {
+			0%, 100% { transform: translateX(0) rotate(-2deg); }
+			50% { transform: translateX(3.5%) rotate(2deg); }
+		}
+
+		@keyframes sway {
+			0%, 100% { transform: rotate(calc(-2deg * var(--wind-strength))); }
+			50% { transform: rotate(calc(2deg * var(--wind-strength))); }
+		}
+
+		@keyframes snowfall {
+			0% { transform: translate3d(0, -10px, 0); }
+			100% { transform: translate3d(12px, 100vh, 0); }
+		}
+
+		@keyframes rockSlide {
+			0% { transform: translate3d(0, 0, 0) rotate(0deg); }
+			100% { transform: translate3d(80px, 180px, 0) rotate(260deg); }
+		}
+
+		@keyframes iceDrop {
+			0% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); opacity: 0.95; }
+			100% { transform: translate3d(20px, 120px, 0) rotate(300deg) scale(0.7); opacity: 0; }
+		}
+
+		@keyframes waterMove {
+			from { background-position: 0 0; }
+			to { background-position: 48px 0; }
+		}
+
+		@keyframes riverShimmer {
+			0% { transform: translateX(-120%); }
+			100% { transform: translateX(140%); }
+		}
+
+		@keyframes hueDrift {
+			from { transform: rotate(0deg); }
+			to { transform: rotate(360deg); }
+		}
+
+		@keyframes mistDrift {
+			from { transform: translateX(0); }
+			to { transform: translateX(24%); }
+		}
+
+		@keyframes sunPulse {
+			0%, 100% { transform: scale(1); }
+			50% { transform: scale(1.08); }
+		}
+
+		@keyframes cameraFloat {
+			0%, 100% { transform: translateY(0); }
+			50% { transform: translateY(-6px); }
+		}
+
+		@keyframes mountainParallax {
+			0%, 100% { transform: translateY(0) scale(1); }
+			50% { transform: translateY(-5px) scale(1.01); }
+		}
+
+		@keyframes cliffParallax {
+			0%, 100% { transform: translateY(0); }
+			50% { transform: translateY(-3px); }
+		}
+
+		@keyframes pulseShift {
+			0% { transform: scale(1); }
+			40% { transform: scale(1.01); }
+			100% { transform: scale(1); }
+		}
+
+		@keyframes dustRise {
+			0% { transform: translate3d(0, 0, 0); opacity: calc(var(--dust-opacity) * 0.7); }
+			100% { transform: translate3d(26px, -90px, 0); opacity: 0; }
+		}
+
+		@keyframes sparkFloat {
+			0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0; }
+			15% { opacity: 1; }
+			100% { transform: translate3d(0, -80px, 0) scale(0.2); opacity: 0; }
+		}
+
+		@keyframes panelGlow {
+			0%, 100% { transform: translateX(-4%) scale(1); }
+			50% { transform: translateX(4%) scale(1.04); }
+		}
+
+		@keyframes questionFade {
+			0% { opacity: 0; transform: translateY(6px); }
+			100% { opacity: 1; transform: translateY(0); }
+		}
+
+		@media (max-width: 920px) {
+			.village {
+				left: 50%;
+				transform: scale(0.9);
+				transform-origin: left bottom;
+			}
+
+			.glacier {
+				left: 30%;
+				width: 220px;
+			}
+
+			.river {
+				left: 18%;
+				width: 66vw;
+			}
+		}
+
+		@media (max-width: 680px) {
+			.forest {
+				left: 6%;
+				right: 6%;
+			}
+
+			.village {
+				left: 45%;
+				bottom: 23%;
+				transform: scale(0.75);
+			}
+
+			.river {
+				left: 8%;
+				width: 78vw;
+			}
+
+			.sun-glow {
+				left: 2%;
+				top: 4%;
+				width: 180px;
+				height: 180px;
+			}
+		}
+	</style>
 </head>
-<body>
-  <main class="scene" aria-label="Animated iceberg scene with wind and ocean motion">
-    <div class="sky-glow"></div>
-    <div class="moon" aria-hidden="true"></div>
-    <div class="cloud one" aria-hidden="true"></div>
-    <div class="cloud two" aria-hidden="true"></div>
-    <div class="cloud three" aria-hidden="true"></div>
+<body class="state-healthy">
+	<div class="scene" aria-hidden="true">
+		<div class="sun-glow"></div>
+		<div class="aurora">
+			<div class="aurora-ribbon r1"></div>
+			<div class="aurora-ribbon r2"></div>
+			<div class="aurora-ribbon r3"></div>
+		</div>
+		<div class="color-wash"></div>
+		<div class="cloud-layer">
+			<div class="cloud a"></div>
+			<div class="cloud b"></div>
+		</div>
+		<div class="mist-band m1"></div>
+		<div class="mist-band m2"></div>
 
-    <div class="caption">
-      iceberg drift
-      <strong>Wind and Water</strong>
-    </div>
+		<div class="mountains-back">
+			<div class="peak one"></div>
+			<div class="peak two"></div>
+			<div class="peak three"></div>
+			<div class="peak four"></div>
+		</div>
 
-    <div class="wind-layer" aria-hidden="true">
-      <div class="wind"></div>
-      <div class="wind"></div>
-      <div class="wind"></div>
-      <div class="wind"></div>
-      <div class="wind"></div>
-      <div class="wind"></div>
-    </div>
+		<div class="mid-cliffs">
+			<div class="cliff left"></div>
+			<div class="cliff right"></div>
+		</div>
 
-    <div class="snow" aria-hidden="true" id="snow"></div>
+		<div class="river"></div>
+		<div class="lower-slopes">
+			<div class="grass-patch g1"></div>
+			<div class="grass-patch g2"></div>
+			<div class="grass-patch g3"></div>
+		</div>
 
-    <div class="sea" aria-hidden="true">
-      <div class="water-glints"></div>
-    </div>
+		<div class="forest">
+			<div class="tree" style="--i:1"></div>
+			<div class="tree" style="--i:2"></div>
+			<div class="tree" style="--i:3"></div>
+			<div class="tree" style="--i:4"></div>
+			<div class="tree" style="--i:5"></div>
+			<div class="tree" style="--i:6"></div>
+			<div class="tree" style="--i:7"></div>
+		</div>
 
-    <div class="wake" aria-hidden="true"></div>
-    <div class="ice-shadow" aria-hidden="true"></div>
+		<div class="village">
+			<div class="house h1"></div>
+			<div class="house h2"></div>
+			<div class="house h3"></div>
+		</div>
 
-    <div class="iceberg-wrap">
-      <div class="underwater" aria-hidden="true"></div>
-      <div class="iceberg" aria-hidden="true"></div>
-    </div>
+		<div class="glacier"></div>
+		<div class="rockfall-zone" id="rockfallZone"></div>
+		<div class="icefall-zone" id="icefallZone"></div>
+		<div class="spark-layer" id="sparkLayer"></div>
+		<div class="dust-layer" id="dustLayer"></div>
+		<div class="snowfall" id="snowfallLayer"></div>
+		<div class="haze"></div>
+	</div>
 
-    <form class="controls" id="melt-form">
-      <label for="melt-button">Iceberg melt</label>
-      <button id="melt-button" type="submit">Melt</button>
-    </form>
-  </main>
+	<main class="container py-4">
+		<section class="quiz-panel card border-0" aria-live="polite">
+			<div class="card-body p-3 p-md-4">
+				<h1 class="mb-2">Mountain Region Climate-Action Quiz</h1>
+				<p class="description mb-3">
+					Choose whether each decision helps protect mountain ecosystems or harms them. Your choices shift the region through Healthy, Warning, and Critical climate states.
+				</p>
 
-  <script>
-    const scene = document.querySelector('.scene');
-    const meltForm = document.getElementById('melt-form');
-    const meltButton = document.getElementById('melt-button');
-    const snowLayer = document.getElementById('snow');
-    const snowCount = 42;
+				<div class="d-flex flex-wrap gap-2 mb-3">
+					<span class="badge-pill" id="stateBadge">State: Healthy</span>
+					<span class="badge-pill" id="scoreBadge">Correct: 0 | Incorrect: 0</span>
+					<span class="badge-pill" id="questionBadge">Question 1 / 5</span>
+				</div>
 
-    for (let index = 0; index < snowCount; index += 1) {
-      const flake = document.createElement('span');
-      const size = 1 + Math.random() * 3;
-      const startLeft = Math.random() * 100;
-      const duration = 6 + Math.random() * 10;
-      const delay = -Math.random() * duration;
-      const opacity = 0.25 + Math.random() * 0.75;
-      const drift = (Math.random() * 2 - 1) * 18;
+				<div class="question-box p-3 mb-3">
+					<p class="question-label mb-1">Scenario</p>
+					<p id="questionText"></p>
+				</div>
 
-      flake.style.left = `${startLeft}%`;
-      flake.style.width = `${size}px`;
-      flake.style.height = `${size}px`;
-      flake.style.opacity = opacity.toFixed(2);
-      flake.style.animationDuration = `${duration.toFixed(2)}s`;
-      flake.style.animationDelay = `${delay.toFixed(2)}s`;
-      flake.style.setProperty('--drift', `${drift}px`);
+				<div class="row g-2 mb-3">
+					<div class="col-12 col-md-6"><button class="btn btn-climate w-100" id="goodBtn">Climate-Positive Action</button></div>
+					<div class="col-12 col-md-6"><button class="btn btn-climate w-100" id="badBtn">Climate-Harmful Action</button></div>
+				</div>
 
-      flake.style.animationName = 'snowFall';
-      snowLayer.appendChild(flake);
-    }
+				<div class="mb-2">
+					<div class="small fw-semibold text-secondary mb-1">Climate Stress Meter</div>
+					<div class="progress" role="progressbar" aria-label="Climate stress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="stressMeterWrap">
+						<div class="progress-bar bg-danger" id="stressMeter" style="width: 0%"></div>
+					</div>
+				</div>
 
-    meltForm.addEventListener('submit', (event) => {
-      event.preventDefault();
+				<p class="feedback mb-2" id="feedback"></p>
+				<button class="btn btn-primary w-100" id="restartBtn">Restart Scene</button>
+			</div>
+		</section>
+	</main>
 
-      if (scene.classList.contains('melting')) {
-        return;
-      }
+	<script>
+		const questions = [
+			{ text: "A mountain village switches to micro-hydro and solar power instead of diesel generators.", answer: "good" },
+			{ text: "Tour operators allow unrestricted off-trail ATV routes on fragile alpine slopes.", answer: "bad" },
+			{ text: "The local council restores native trees to reduce erosion and landslide risk.", answer: "good" },
+			{ text: "A ski resort clears extra forest and diverts streams to build artificial snow systems.", answer: "bad" },
+			{ text: "Residents create water-sharing rules and glacier monitoring to protect dry-season flow.", answer: "good" }
+		];
 
-      scene.classList.add('melting');
-      meltButton.disabled = true;
-      meltButton.textContent = 'Melting';
-    });
-  </script>
+		const thresholds = { warning: 2, critical: 4 };
+
+		const questionText = document.getElementById("questionText");
+		const stateBadge = document.getElementById("stateBadge");
+		const scoreBadge = document.getElementById("scoreBadge");
+		const questionBadge = document.getElementById("questionBadge");
+		const feedback = document.getElementById("feedback");
+		const goodBtn = document.getElementById("goodBtn");
+		const badBtn = document.getElementById("badBtn");
+		const restartBtn = document.getElementById("restartBtn");
+		const snowfallLayer = document.getElementById("snowfallLayer");
+		const rockfallZone = document.getElementById("rockfallZone");
+		const icefallZone = document.getElementById("icefallZone");
+		const sparkLayer = document.getElementById("sparkLayer");
+		const dustLayer = document.getElementById("dustLayer");
+		const stressMeter = document.getElementById("stressMeter");
+		const stressMeterWrap = document.getElementById("stressMeterWrap");
+
+		let index = 0;
+		let correct = 0;
+		let incorrect = 0;
+		let over = false;
+		let activeState = "healthy";
+		let rockTimer = null;
+		let iceTimer = null;
+		let dustTimer = null;
+		let sparkTimer = null;
+
+		function snowfallCountByState(state) {
+			if (state === "critical") {
+				return 14;
+			}
+			if (state === "warning") {
+				return 28;
+			}
+			return 46;
+		}
+
+		function buildSnowfall(state) {
+			snowfallLayer.innerHTML = "";
+			const count = snowfallCountByState(state);
+			for (let i = 0; i < count; i += 1) {
+				const flake = document.createElement("span");
+				flake.className = "flake";
+				flake.style.left = `${Math.random() * 100}%`;
+				flake.style.animationDuration = `${6 + Math.random() * 8}s`;
+				flake.style.animationDelay = `${Math.random() * -10}s`;
+				flake.style.transform = `scale(${0.65 + Math.random() * 1.3})`;
+				snowfallLayer.appendChild(flake);
+			}
+		}
+
+		function currentState() {
+			if (incorrect >= thresholds.critical) {
+				return "critical";
+			}
+			if (incorrect >= thresholds.warning) {
+				return "warning";
+			}
+			return "healthy";
+		}
+
+		function setStateClass(state) {
+			document.body.classList.remove("state-healthy", "state-warning", "state-critical");
+			document.body.classList.add(`state-${state}`);
+			stateBadge.textContent = `State: ${state.charAt(0).toUpperCase()}${state.slice(1)}`;
+		}
+
+		function animateStateChangeIfNeeded(nextState) {
+			if (nextState !== activeState) {
+				activeState = nextState;
+				document.body.classList.add("state-shift");
+				window.setTimeout(() => document.body.classList.remove("state-shift"), 900);
+				buildSnowfall(nextState);
+			}
+		}
+
+		function updateStressMeter() {
+			const ratio = Math.min((incorrect / thresholds.critical) * 100, 100);
+			stressMeter.style.width = `${ratio}%`;
+			stressMeterWrap.setAttribute("aria-valuenow", String(Math.round(ratio)));
+		}
+
+		function updateHUD() {
+			scoreBadge.textContent = `Correct: ${correct} | Incorrect: ${incorrect}`;
+			questionBadge.textContent = `Question ${Math.min(index + 1, questions.length)} / ${questions.length}`;
+			const state = currentState();
+			animateStateChangeIfNeeded(state);
+			setStateClass(state);
+			updateStressMeter();
+			syncHazards(state);
+		}
+
+		function renderQuestion() {
+			if (index < questions.length) {
+				questionText.classList.remove("question-enter");
+				void questionText.offsetWidth;
+				questionText.textContent = questions[index].text;
+				questionText.classList.add("question-enter");
+			}
+		}
+
+		function spawnSpark(state) {
+			const spark = document.createElement("span");
+			spark.className = "spark";
+			spark.style.left = `${8 + Math.random() * 84}%`;
+			spark.style.bottom = `${8 + Math.random() * 28}%`;
+			spark.style.animationDuration = `${1.8 + Math.random() * 2.2}s`;
+			if (state === "critical") {
+				spark.style.background = "rgba(255, 177, 110, 0.8)";
+				spark.style.boxShadow = "0 0 10px rgba(255, 166, 93, 0.78)";
+			} else if (state === "warning") {
+				spark.style.background = "rgba(220, 234, 255, 0.78)";
+				spark.style.boxShadow = "0 0 10px rgba(184, 212, 237, 0.64)";
+			}
+			sparkLayer.appendChild(spark);
+			spark.addEventListener("animationend", () => spark.remove());
+		}
+
+		function spawnRock() {
+			const rock = document.createElement("span");
+			rock.className = "rock";
+			rock.style.left = `${5 + Math.random() * 85}%`;
+			rock.style.top = `${Math.random() * 35}%`;
+			rock.style.animationDuration = `${1.6 + Math.random() * 1.4}s`;
+			rockfallZone.appendChild(rock);
+			rock.addEventListener("animationend", () => rock.remove());
+		}
+
+		function spawnIceChunk() {
+			const chunk = document.createElement("span");
+			chunk.className = "ice-chunk";
+			chunk.style.left = `${20 + Math.random() * 65}%`;
+			chunk.style.top = `${Math.random() * 20}%`;
+			chunk.style.animationDuration = `${1.3 + Math.random() * 0.8}s`;
+			icefallZone.appendChild(chunk);
+			chunk.addEventListener("animationend", () => chunk.remove());
+		}
+
+		function spawnDust() {
+			const dust = document.createElement("span");
+			dust.className = "dust";
+			dust.style.left = `${Math.random() * 100}%`;
+			dust.style.bottom = `${Math.random() * 30}%`;
+			dust.style.animationDuration = `${2 + Math.random() * 2.6}s`;
+			dustLayer.appendChild(dust);
+			dust.addEventListener("animationend", () => dust.remove());
+		}
+
+		function clearTimers() {
+			if (rockTimer) {
+				clearInterval(rockTimer);
+				rockTimer = null;
+			}
+			if (iceTimer) {
+				clearInterval(iceTimer);
+				iceTimer = null;
+			}
+			if (dustTimer) {
+				clearInterval(dustTimer);
+				dustTimer = null;
+			}
+			if (sparkTimer) {
+				clearInterval(sparkTimer);
+				sparkTimer = null;
+			}
+		}
+
+		function syncHazards(state) {
+			clearTimers();
+			sparkTimer = setInterval(() => spawnSpark(state), state === "critical" ? 240 : state === "warning" ? 420 : 700);
+			if (state === "warning") {
+				rockTimer = setInterval(spawnRock, 1700);
+				dustTimer = setInterval(spawnDust, 1900);
+			}
+			if (state === "critical") {
+				rockTimer = setInterval(spawnRock, 800);
+				iceTimer = setInterval(spawnIceChunk, 1100);
+				dustTimer = setInterval(spawnDust, 800);
+			}
+		}
+
+		function endQuiz(message, positive) {
+			over = true;
+			goodBtn.disabled = true;
+			badBtn.disabled = true;
+			restartBtn.style.display = "block";
+			feedback.textContent = message;
+			feedback.className = positive ? "feedback good" : "feedback bad";
+			questionBadge.textContent = "Scene Finalized";
+		}
+
+		function answer(choice) {
+			if (over) {
+				return;
+			}
+			if (choice === questions[index].answer) {
+				correct += 1;
+				feedback.textContent = "Good call: this protects mountain stability.";
+				feedback.className = "feedback good";
+			} else {
+				incorrect += 1;
+				feedback.textContent = "Harmful impact detected: climate stress increased.";
+				feedback.className = "feedback bad";
+			}
+
+			index += 1;
+			updateHUD();
+
+			if (incorrect >= thresholds.critical) {
+				endQuiz("Critical state reached: glacier collapse and ecosystem stress are severe.", false);
+				return;
+			}
+
+			if (index >= questions.length) {
+				const positive = correct > incorrect;
+				endQuiz(
+					positive
+						? "Quiz complete: the mountain region remains mostly resilient."
+						: "Quiz complete: the mountain region remains under strong climate stress.",
+					positive
+				);
+				return;
+			}
+
+			renderQuestion();
+		}
+
+		function restart() {
+			index = 0;
+			correct = 0;
+			incorrect = 0;
+			over = false;
+			activeState = "healthy";
+			feedback.textContent = "";
+			feedback.className = "feedback";
+			goodBtn.disabled = false;
+			badBtn.disabled = false;
+			restartBtn.style.display = "none";
+			setStateClass("healthy");
+			buildSnowfall("healthy");
+			updateHUD();
+			renderQuestion();
+		}
+
+		goodBtn.addEventListener("click", () => answer("good"));
+		badBtn.addEventListener("click", () => answer("bad"));
+		restartBtn.addEventListener("click", restart);
+
+		buildSnowfall("healthy");
+		updateHUD();
+		renderQuestion();
+	</script>
 </body>
 </html>
